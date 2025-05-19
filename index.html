@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Search Engine</title>
+    <style>
+        :root {
+            --primary: #2A2A2A;
+            --secondary: #F5F5F5;
+            --accent: #4A90E2;
+            --text: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: var(--secondary);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+            background: var(--primary);
+            color: white;
+            border-radius: 0 0 1rem 1rem;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 3rem;
+        }
+
+        .upload-box {
+            border: 2px dashed var(--accent);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .upload-box:hover {
+            background: rgba(74, 144, 226, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .custom-upload {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--accent);
+            color: white;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .custom-upload:hover {
+            background: #357ABD;
+        }
+
+        #previewContainer {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        #uploadedPreview {
+            max-width: 400px;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 1rem auto;
+        }
+
+        .results-header {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin: 2rem 0;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 2rem;
+            padding: 1rem 0;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .result-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .result-info {
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .similarity-score {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.5s ease;
+        }
+
+        .filename {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(74, 144, 226, 0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+            display: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .analyze-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .analyze-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            background: #357ABD;
+            transform: translateY(-2px);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1.5rem 0;
+            }
+            
+            .upload-section {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>Visual Search Engine</h1>
+            <p>Discover similar images in our database</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="upload-section">
+            <div class="upload-box">
+                <form id="searchForm">
+                    <div class="file-input">
+                        <input type="file" id="imageInput" accept="image/*" hidden>
+                        <label for="imageInput" class="custom-upload">
+                            📁 Choose Image
+                        </label>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="submit" class="analyze-btn" id="analyzeBtn" disabled>
+                            🔍 Analyze Image
+                        </button>
+                    </div>
+                </form>
+                <div id="previewContainer" class="hidden">
+                    <h3>Your Uploaded Image</h3>
+                    <img id="uploadedPreview" alt="Upload preview">
+                </div>
+            </div>
+        </div>
+
+        <div class="loader" id="loader"></div>
+
+        <h2 class="results-header" id="resultsHeader" style="display: none;">Search Results</h2>
+        <div class="results-grid" id="results"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('searchForm');
+        const fileInput = document.getElementById('imageInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('uploadedPreview');
+        const resultsHeader = document.getElementById('resultsHeader');
+        const loader = document.getElementById('loader');
+        const resultsDiv = document.getElementById('results');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        // Handle file selection
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                analyzeBtn.disabled = false;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewContainer.classList.remove('hidden');
+                    previewImage.src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                analyzeBtn.disabled = true;
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // Disable button and show loading
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '🔍 Analyzing...';
+            loader.style.display = 'block';
+            resultsHeader.style.display = 'none';
+            resultsDiv.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultsHeader.style.display = 'block';
+                    resultsDiv.innerHTML = data.results.map(result => `
+                        <div class="result-card">
+                            <img src="/database/${result.filename}" class="result-image" alt="${result.filename}">
+                            <div class="result-info">
+                                <div class="similarity-score">${result.similarity}% Match</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${result.similarity}%"></div>
+                                </div>
+                                <div class="filename">${result.filename}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    alert('Error: ' + (data.error || 'Request failed'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loader.style.display = 'none';
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '🔍 Analyze Image';
+            }
+        });
+    </script>
+</body>
+</html>
