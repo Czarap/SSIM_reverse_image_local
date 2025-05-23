@@ -1,11 +1,12 @@
 import os
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 from pathlib import Path
 from skimage.metrics import structural_similarity as ssim
 from skimage.transform import resize
 import logging
+from flask import send_from_directory
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -36,6 +37,7 @@ def init_database():
             img_resized = resize(img_gray, (300, 300), preserve_range=True)  # Keep original range
             database[img_path.name] = img_resized
     return database
+
 def calculate_ssim(query_img, db_img):
     try:
         # Ensure both images have the same dimensions
@@ -90,14 +92,15 @@ def search():
         results = []
         for filename, db_img in database.items():
             similarity = calculate_ssim(query_processed, db_img)
-            results.append({
-                'filename': filename,
-                'similarity': similarity
-            })
+            if similarity >= 50:  # Only include images with 50% or higher match
+                results.append({
+                    'filename': filename,
+                    'similarity': similarity
+                })
 
         # Sort results by similarity score
         results.sort(key=lambda x: x['similarity'], reverse=True)
-        return jsonify({'results': results[:10]})
+        return jsonify({'results': results[:10]})  # Still limit to top 10 matches
 
     except Exception as e:
         app.logger.error(f"Search error: {str(e)}")
@@ -105,10 +108,13 @@ def search():
     finally:
         if os.path.exists(filepath):
             os.remove(filepath)
-
+            
 @app.route('/database-status')
 def database_status():
     database = init_database()
     return jsonify({'count': len(database)})
+@app.route('/database/<filename>')
+def serve_database_image(filename):
+    return send_from_directory(app.config['DATABASE_FOLDER'], filename)
 if __name__ == '__main__':
     app.run(debug=True)
